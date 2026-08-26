@@ -1,0 +1,7 @@
+recording/
+sigma_edit_output.mp4
+sigma_edit_output_temp.mp4
+__pycache__/
+*.pyc
+.DS_Store
+cutout.png
