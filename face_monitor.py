@@ -9,8 +9,31 @@ import random
 import threading
 import math
 import subprocess
+import platform
 
-PROJECT_DIR = "/Users/akshatsingh/Projects/AuraFarming"
+def play_audio(file_path, async_play=True):
+    system = platform.system()
+    cmd = []
+    kwargs = {}
+    if system == "Darwin":
+        cmd = ['afplay', file_path]
+    elif system == "Windows":
+        cmd = ['ffplay', '-nodisp', '-autoexit', '-loglevel', 'quiet', file_path]
+        if hasattr(subprocess, 'CREATE_NO_WINDOW'):
+            kwargs['creationflags'] = subprocess.CREATE_NO_WINDOW
+    else:
+        cmd = ['ffplay', '-nodisp', '-autoexit', '-loglevel', 'quiet', file_path]
+        
+    try:
+        if async_play:
+            return subprocess.Popen(cmd, **kwargs)
+        else:
+            return subprocess.run(cmd, **kwargs)
+    except Exception as e:
+        print(f"Failed to play audio {file_path}: {e}")
+        return None
+
+PROJECT_DIR = os.path.dirname(os.path.abspath(__file__))
 RECORDING_DIR = os.path.join(PROJECT_DIR, "recording")
 SIGMA_VIDEO = os.path.join(PROJECT_DIR, "sigma.mp4")
 WAITING_WAV = os.path.join(PROJECT_DIR, "waiting.wav")
@@ -722,7 +745,7 @@ class FaceTrackerApp:
                 
                 waiting_proc = None
                 try:
-                    waiting_proc = subprocess.Popen(['afplay', WAITING_WAV])
+                    waiting_proc = play_audio(WAITING_WAV, async_play=True)
                 except: pass
                 
                 success = generate_edit(
@@ -737,7 +760,7 @@ class FaceTrackerApp:
                 
                 if success:
                     try:
-                        subprocess.run(['afplay', os.path.join(PROJECT_DIR, 'confim.wav')])
+                        play_audio(os.path.join(PROJECT_DIR, 'confim.wav'), async_play=False)
                     except:
                         pass
                         
@@ -767,7 +790,7 @@ class FaceTrackerApp:
         else:
             audio_file = os.path.join(PROJECT_DIR, "third.wav")
             
-        self.audio_process = subprocess.Popen(['afplay', audio_file])
+        self.audio_process = play_audio(audio_file, async_play=True)
         
         self.playback_cycle += 1
         self.last_edit_frame = None

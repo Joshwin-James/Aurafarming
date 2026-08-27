@@ -42,10 +42,10 @@ The entire engine was built to be blazingly fast by relying almost entirely on n
 
 - `opencv-python` (`cv2`)
 - `numpy`
-- `ffmpeg` (for audio extraction and muxing)
-- `afplay` (macOS native audio player)
-
+- `ffmpeg` & `ffplay` (used for audio extraction, muxing, and cross-platform audio playback; `afplay` is automatically used on macOS)
 ## Setup & Usage
+
+**Note for Windows Users**: You must have `ffmpeg` installed and added to your system's `PATH` environment variable for audio playback and video generation to work.
 
 1. Ensure you have the required audio and video soundtracks (`sigma.mp4`, `second.mp4`, `third.mp4`, `waiting.wav`, `confim.wav`) in the project directory.
 2. Run the main script:
