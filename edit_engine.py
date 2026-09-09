@@ -459,18 +459,19 @@ def generate_edit(user_files, edit_style, base_dir, output_path, target_size=(72
             cap = cv2.VideoCapture(f)
             while cap.isOpened():
                 ret, frame = cap.read()
-                if not ret or len(frames) >= 300:
+                if not ret or frame is None or len(frames) >= 300:
                     break
                 frames.append(center_crop_and_resize(frame, target_size))
             cap.release()
             if len(frames) >= 300:
                 break
                 
-        if len(frames) < 60:
-            raise ValueError("Uploaded video is too short for Phonk Zoom edit.")
+        if not frames:
+            raise ValueError("No video frames could be decoded from uploaded clip.")
 
         while len(frames) < 300:
-            frames.append(frames[len(frames) % len(frames)].copy())
+            frames = frames + frames
+        frames = frames[:300]
             
         intro = frames[0:90]
         cuts = []

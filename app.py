@@ -78,6 +78,8 @@ async def generate_edit_endpoint(
             "filename": output_filename
         })
     except Exception as e:
+        import traceback
+        traceback.print_exc()
         print(f"Edit generation error: {e}")
         raise HTTPException(status_code=500, detail=f"Failed to generate edit: {str(e)}")
     finally:
