@@ -79,9 +79,8 @@ async def generate_edit_endpoint(
         })
     except Exception as e:
         import traceback
-        traceback.print_exc()
-        print(f"Edit generation error: {e}")
-        raise HTTPException(status_code=500, detail=f"Failed to generate edit: {str(e)}")
+        tb = traceback.format_exc()
+        raise HTTPException(status_code=500, detail={"message": f"Failed to generate edit: {str(e)}", "traceback": tb})
     finally:
         shutil.rmtree(temp_dir, ignore_errors=True)
 
