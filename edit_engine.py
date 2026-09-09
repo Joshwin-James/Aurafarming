@@ -322,9 +322,11 @@ def extract_clips(video_files, clip_dur, num_clips, target_size, fps=30):
         cap.release()
         
         # If video was shorter than needed, loop it to fill the duration
+        if clip_frames and len(clip_frames) < needed:
+            loops = (needed // len(clip_frames)) + 1
+            clip_frames = (clip_frames * loops)[:needed]
+            
         if clip_frames:
-            while len(clip_frames) < needed:
-                clip_frames.append(clip_frames[-1])
             clips.append(clip_frames)
             
     return clips
