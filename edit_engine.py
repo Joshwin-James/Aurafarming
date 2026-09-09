@@ -256,32 +256,64 @@ def center_crop_and_resize(img, target_size):
         
     return cv2.resize(img_cropped, target_size)
 
+def normalize_video_file(input_path):
+    ffmpeg_cmd = shutil.which("ffmpeg")
+    if not ffmpeg_cmd:
+        return input_path
+    
+    norm_path = input_path + "_norm.mp4"
+    cmd = [
+        ffmpeg_cmd, "-y",
+        "-i", input_path,
+        "-c:v", "libx264",
+        "-preset", "ultrafast",
+        "-r", "30",
+        "-pix_fmt", "yuv420p",
+        norm_path
+    ]
+    try:
+        subprocess.run(cmd, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        if os.path.exists(norm_path) and os.path.getsize(norm_path) > 0:
+            return norm_path
+    except Exception as e:
+        print(f"Video normalization error: {e}")
+    return input_path
+
 def extract_clips(video_files, clip_dur, num_clips, target_size, fps=30):
     if not video_files:
         return []
-    clips = []
-    for _ in range(num_clips):
-        path = random.choice(video_files)
+    
+    # Read all frames from source videos
+    all_frames = []
+    for path in video_files:
         cap = cv2.VideoCapture(path)
-        total = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
-        vfps = cap.get(cv2.CAP_PROP_FPS) or fps
-        needed = int(clip_dur * vfps)
-        if total > 0 and total > needed:
-            start = random.randint(0, total - needed)
-        else:
-            start = 0
-        cap.set(cv2.CAP_PROP_POS_FRAMES, start)
-        frames = []
-        count = 0
-        while cap.isOpened() and count < (needed if needed > 0 else 90):
+        while cap.isOpened():
             ret, f = cap.read()
             if not ret or f is None:
                 break
-            frames.append(center_crop_and_resize(f, target_size))
-            count += 1
+            all_frames.append(center_crop_and_resize(f, target_size))
         cap.release()
-        if frames:
-            clips.append(frames)
+
+    if not all_frames:
+        return []
+
+    needed_per_clip = int(clip_dur * fps)
+    if needed_per_clip <= 0:
+        needed_per_clip = 30
+
+    # Repeat frames if total recorded footage is shorter than needed
+    while len(all_frames) < needed_per_clip:
+        all_frames = all_frames + all_frames
+
+    clips = []
+    max_start = max(0, len(all_frames) - needed_per_clip)
+    for _ in range(num_clips):
+        start = random.randint(0, max_start) if max_start > 0 else 0
+        clip_frames = all_frames[start : start + needed_per_clip]
+        while len(clip_frames) < needed_per_clip:
+            clip_frames.append(clip_frames[-1].copy())
+        clips.append(clip_frames)
+        
     return clips
 
 def dip_to_black_transition(clip_a, clip_b, fade_frames=8):
@@ -357,6 +389,12 @@ def apply_speed_ramp(frames):
 def generate_edit(user_files, edit_style, base_dir, output_path, target_size=(720, 1280), fps=30):
     fade_frames = 8
     sigma_path = os.path.join(base_dir, "sigma.mp4")
+    
+    # Normalize input files with FFmpeg for 100% OpenCV frame decoding reliability
+    norm_user_files = []
+    for f in user_files:
+        norm_user_files.append(normalize_video_file(f))
+    user_files = norm_user_files
     
     if edit_style == "sigma":
         user_clips = extract_clips(user_files, 3.0, 6, target_size, fps)
