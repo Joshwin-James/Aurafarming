@@ -295,37 +295,38 @@ def extract_clips(video_files, clip_dur, num_clips, target_size, fps=30):
     if not video_files:
         return []
     
-    # Read all frames from source videos
-    all_frames = []
-    for path in video_files:
+    clips = []
+    for _ in range(num_clips):
+        path = random.choice(video_files)
         cap = cv2.VideoCapture(path)
-        while cap.isOpened():
+        total = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+        vfps = cap.get(cv2.CAP_PROP_FPS) or fps
+        needed = int(clip_dur * vfps)
+        
+        if total > 0 and total > needed:
+            start = random.randint(0, total - needed)
+        else:
+            start = 0
+            
+        cap.set(cv2.CAP_PROP_POS_FRAMES, start)
+        
+        clip_frames = []
+        count = 0
+        while cap.isOpened() and count < (needed if needed > 0 else 90):
             ret, f = cap.read()
             if not ret or f is None:
                 break
-            all_frames.append(center_crop_and_resize(f, target_size))
+            clip_frames.append(center_crop_and_resize(f, target_size))
+            count += 1
+            
         cap.release()
-
-    if not all_frames:
-        return []
-
-    needed_per_clip = int(clip_dur * fps)
-    if needed_per_clip <= 0:
-        needed_per_clip = 30
-
-    # Repeat frames if total recorded footage is shorter than needed
-    while len(all_frames) < needed_per_clip:
-        all_frames = all_frames + all_frames
-
-    clips = []
-    max_start = max(0, len(all_frames) - needed_per_clip)
-    for _ in range(num_clips):
-        start = random.randint(0, max_start) if max_start > 0 else 0
-        clip_frames = all_frames[start : start + needed_per_clip]
-        while len(clip_frames) < needed_per_clip:
-            clip_frames.append(clip_frames[-1].copy())
-        clips.append(clip_frames)
         
+        # If video was shorter than needed, loop it to fill the duration
+        if clip_frames:
+            while len(clip_frames) < needed:
+                clip_frames.append(clip_frames[-1])
+            clips.append(clip_frames)
+            
     return clips
 
 def dip_to_black_transition(clip_a, clip_b, fade_frames=8):
