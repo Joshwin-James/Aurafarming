@@ -159,18 +159,30 @@ def apply_phonk_wasted_stinger(clip):
 
 def apply_cutout_slide(clip):
     if len(clip) == 0: return clip
-    cascade_path = cv2.data.haarcascades + 'haarcascade_frontalface_default.xml'
-    face_cascade = cv2.CascadeClassifier(cascade_path)
     first_frame = clip[0]
-    gray = cv2.cvtColor(first_frame, cv2.COLOR_BGR2GRAY)
-    faces = face_cascade.detectMultiScale(gray, 1.1, 4)
     h, w = first_frame.shape[:2]
     
     cutout = None
     mask = None
+    faces = []
+    
+    try:
+        if hasattr(cv2, 'CascadeClassifier') and hasattr(cv2, 'data'):
+            cascade_path = cv2.data.haarcascades + 'haarcascade_frontalface_default.xml'
+            face_cascade = cv2.CascadeClassifier(cascade_path)
+            gray = cv2.cvtColor(first_frame, cv2.COLOR_BGR2GRAY)
+            faces = face_cascade.detectMultiScale(gray, 1.1, 4)
+    except Exception as e:
+        print(f"Face cascade detection failed: {e}")
     
     if len(faces) > 0:
         (x, y, fw, fh) = max(faces, key=lambda f: f[2]*f[3])
+    else:
+        # Fallback to center frame if cascade fails or no face found
+        fw, fh = int(w * 0.4), int(h * 0.3)
+        x, y = (w - fw) // 2, (h - fh) // 2
+        
+    if True: # Execute cutout with either detected face or fallback
         pad_x = int(fw * 0.8)
         pad_y_top = int(fh * 0.6)
         pad_y_bot = int(fh * 1.5)
