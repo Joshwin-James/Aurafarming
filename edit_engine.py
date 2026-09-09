@@ -412,7 +412,6 @@ def generate_edit(user_files, edit_style, base_dir, output_path, target_size=(36
     if edit_style == "sigma":
         user_clips = extract_clips(user_files, 3.0, 6, target_size, fps)
         if not user_clips:
-            # Fallback if extraction failed
             user_clips = extract_clips(user_files, 1.5, 4, target_size, fps)
         if not user_clips:
             raise ValueError("Could not extract video clips from uploaded file.")
@@ -420,7 +419,8 @@ def generate_edit(user_files, edit_style, base_dir, output_path, target_size=(36
         merged = []
         for i in range(len(user_clips)):
             merged.append(apply_speed_ramp(user_clips[i]))
-
+        user_clips = None # Free raw frames to prevent OOM
+        
         for ci, clip in enumerate(merged):
             for fi in range(len(clip)):
                 if ci % 2 == 0:
@@ -430,16 +430,20 @@ def generate_edit(user_files, edit_style, base_dir, output_path, target_size=(36
                 f = apply_vignette(f)
                 clip[fi] = f
 
-        final = merged[0]
-        for i in range(min(fade_frames, len(final))):
-            final[i] = cv2.convertScaleAbs(final[i], alpha=(i/fade_frames), beta=0)
-            
+        final = merged[0][:-fade_frames] if len(merged[0]) > fade_frames else merged[0]
         for i in range(1, len(merged)):
-            final = dip_to_black_transition(final, merged[i])
-            
+            final.extend(dip_to_black_transition(merged[i-1], merged[i], fade_frames))
+            if i < len(merged) - 1:
+                final.extend(merged[i][fade_frames:-fade_frames])
+            else:
+                final.extend(merged[i][fade_frames:])
+                
+        # Fade out end
         for i in range(min(fade_frames, len(final))):
             final[-(i+1)] = cv2.convertScaleAbs(final[-(i+1)], alpha=(i/fade_frames), beta=0)
             
+        audio_src = sigma_path
+        
     elif edit_style == "second":
         intro = extract_clips(user_files, 3.0, 1, target_size, fps)
         fast_cuts = extract_clips(user_files, 0.6, 6, target_size, fps)
@@ -462,9 +466,15 @@ def generate_edit(user_files, edit_style, base_dir, output_path, target_size=(36
                 f = apply_grain(f, amount=5)
                 clip[fi] = f
                 
-        final = merged[0]
+        final = merged[0][:-fade_frames] if len(merged[0]) > fade_frames else merged[0]
         for i in range(1, len(merged)):
-            final = zoom_flash_transition(final, merged[i], transition_frames=6)
+            final.extend(zoom_flash_transition(merged[i-1], merged[i], fade_frames))
+            if i < len(merged) - 1:
+                final.extend(merged[i][fade_frames:-fade_frames])
+            else:
+                final.extend(merged[i][fade_frames:])
+        
+        audio_src = os.path.join(base_dir, "second.mp4")
             
     else: # "third" (Phonk Zoom)
         frames = []
