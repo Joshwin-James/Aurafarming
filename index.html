@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AuraFarming - Autonomous AI Videographer & Reels Generator</title>
+    <link rel="stylesheet" href="index.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;800;900&family=Rajdhani:wght@500;600;700&family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="bg-glow"></div>
+    <div class="grid-overlay"></div>
+
+    <!-- Header Navigation -->
+    <header class="app-header">
+        <div class="logo-container">
+            <div class="logo-icon">⚡</div>
+            <div class="logo-text">
+                <span class="brand-title">AURA<span class="highlight">FARMING</span></span>
+                <span class="brand-sub">AUTONOMOUS AI EDIT ENGINE 2.0</span>
+            </div>
+        </div>
+        <div class="header-badges">
+            <div class="status-badge" id="camera-status">
+                <span class="status-dot warning"></span>
+                <span class="status-text">INITIALIZING CAMERA</span>
+            </div>
+            <div class="engine-badge">
+                <span class="badge-tag">OPENCV + FFMPEG</span>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Container -->
+    <main class="main-container">
+        <!-- Live Camera Feed & Target HUD -->
+        <section class="viewport-section">
+            <div class="video-card">
+                <div class="video-header">
+                    <span class="live-tag"><span class="blink-dot"></span> LIVE HUD STREAM</span>
+                    <span class="resolution-tag" id="res-tag">720x1280 (9:16)</span>
+                </div>
+                
+                <div class="video-wrapper" id="video-wrapper">
+                    <video id="webcam" autoplay playsinline muted></video>
+                    
+                    <!-- High-Tech HUD Elements Overlay -->
+                    <div class="hud-overlay" id="hud-overlay">
+                        <div class="hud-corner top-left"></div>
+                        <div class="hud-corner top-right"></div>
+                        <div class="hud-corner bottom-left"></div>
+                        <div class="hud-corner bottom-right"></div>
+                        
+                        <div class="hud-scanline"></div>
+                        
+                        <!-- Dynamic Target Box -->
+                        <div class="target-box" id="target-box">
+                            <div class="target-bracket tb-tl"></div>
+                            <div class="target-bracket tb-tr"></div>
+                            <div class="target-bracket tb-bl"></div>
+                            <div class="target-bracket tb-br"></div>
+                            <div class="target-crosshair"></div>
+                            <span class="target-label" id="target-label">SUBJECT LOCKED</span>
+                        </div>
+
+                        <!-- Recording Indicator Overlay -->
+                        <div class="recording-overlay hidden" id="rec-overlay">
+                            <div class="rec-dot"></div>
+                            <span class="rec-text">RECORDING CLIPS...</span>
+                            <span class="rec-timer" id="rec-timer">00:03</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="video-footer">
+                    <span id="fps-counter">30 FPS</span>
+                    <span id="face-lock-status">TARGET LOCK: READY</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- Controls & AI Edit Panel -->
+        <section class="controls-section">
+            <!-- Phase Tracker -->
+            <div class="panel-card phase-card">
+                <div class="panel-title">SYSTEM PHASE</div>
+                <div class="stepper">
+                    <div class="step active" id="step-standby">
+                        <div class="step-num">1</div>
+                        <div class="step-label">STANDBY</div>
+                    </div>
+                    <div class="step-line"></div>
+                    <div class="step" id="step-recording">
+                        <div class="step-num">2</div>
+                        <div class="step-label">RECORD</div>
+                    </div>
+                    <div class="step-line"></div>
+                    <div class="step" id="step-processing">
+                        <div class="step-num">3</div>
+                        <div class="step-label">PROCESS</div>
+                    </div>
+                    <div class="step-line"></div>
+                    <div class="step" id="step-playback">
+                        <div class="step-num">4</div>
+                        <div class="step-label">PLAYBACK</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Edit Style Selector -->
+            <div class="panel-card">
+                <div class="panel-title">SELECT EDIT CYCLE</div>
+                <div class="style-grid">
+                    <div class="style-card active" data-style="sigma">
+                        <div class="style-badge">CYCLE 1</div>
+                        <div class="style-name">🔥 SIGMA EDIT</div>
+                        <div class="style-desc">Moody desaturated cinematic grade, speed ramps & motion-blur flash cuts.</div>
+                    </div>
+
+                    <div class="style-card" data-style="second">
+                        <div class="style-badge">CYCLE 2</div>
+                        <div class="style-name">🎬 SECOND EDIT</div>
+                        <div class="style-desc">Warm filmic grade, continuous Ken Burns push-in zooms & 0.6s micro-cuts.</div>
+                    </div>
+
+                    <div class="style-card" data-style="third">
+                        <div class="style-badge">CYCLE 3</div>
+                        <div class="style-name">⚡ PHONK ZOOM</div>
+                        <div class="style-desc">Aggressive phonk montage, sliding cutout torso overlay & GTA "WASTED" stinger.</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="panel-card action-card">
+                <button class="btn btn-primary" id="btn-record">
+                    <span class="btn-icon">⚡</span>
+                    <span class="btn-text">GENERATE REEL EDIT</span>
+                </button>
+                <button class="btn btn-secondary" id="btn-auto-loop">
+                    <span class="btn-icon">🔄</span>
+                    <span class="btn-text">START AUTO LOOP</span>
+                </button>
+            </div>
+
+            <!-- Console Log -->
+            <div class="panel-card console-card">
+                <div class="panel-title">LIVE LOG CONSOLE</div>
+                <div class="console-box" id="console-box">
+                    <div class="log-line info">[SYSTEM] Engine initialized. Awaiting user input.</div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Final Generated Video Playback Modal -->
+    <div class="modal-backdrop hidden" id="output-modal">
+        <div class="modal-card">
+            <div class="modal-header">
+                <div class="modal-title">✨ AURA REEL GENERATED</div>
+                <button class="close-btn" id="close-modal">&times;</button>
+            </div>
+            
+            <div class="modal-body">
+                <div class="reel-player-container">
+                    <video id="output-player" controls autoplay loop playsinline></video>
+                </div>
+            </div>
+
+            <div class="modal-footer">
+                <a id="btn-download" href="#" download class="btn btn-secondary">
+                    ⬇️ DOWNLOAD REEL
+                </a>
+                <button class="btn btn-primary" id="btn-again">
+                    ⚡ CREATE ANOTHER
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
