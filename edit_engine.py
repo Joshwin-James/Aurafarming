@@ -399,7 +399,7 @@ def apply_speed_ramp(frames):
         out_frames.append(frames[j_int])
     return out_frames
 
-def generate_edit(user_files, edit_style, base_dir, output_path, target_size=(720, 1280), fps=30):
+def generate_edit(user_files, edit_style, base_dir, output_path, target_size=(360, 640), fps=30):
     fade_frames = 8
     sigma_path = os.path.join(base_dir, "sigma.mp4")
     
