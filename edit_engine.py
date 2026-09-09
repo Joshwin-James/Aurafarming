@@ -5,6 +5,56 @@ import os
 import glob
 import subprocess
 import shutil
+import logging
+
+logger = logging.getLogger("edit_engine")
+if not logger.handlers:
+    logging.basicConfig(level=logging.INFO)
+
+
+class VideoReadError(Exception):
+    """Raised when an uploaded video file cannot be read or processed."""
+    pass
+
+
+def validate_video_file(path):
+    """Check whether a video file exists and can be read by OpenCV.
+
+    Returns a dict with keys: ok (bool), reason (str), frame_count (int),
+    fps (float). Does not raise; callers should inspect the result.
+    """
+    info = {"ok": False, "reason": "", "frame_count": 0, "fps": 0.0}
+
+    if not path or not os.path.exists(path):
+        info["reason"] = f"File does not exist: {path}"
+        return info
+
+    if os.path.getsize(path) == 0:
+        info["reason"] = f"File is empty: {path}"
+        return info
+
+    cap = cv2.VideoCapture(path)
+    try:
+        if not cap.isOpened():
+            info["reason"] = f"OpenCV could not open file (unsupported format or corrupted): {path}"
+            return info
+
+        frame_count = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+        fps = cap.get(cv2.CAP_PROP_FPS) or 0.0
+
+        # Some containers report frame_count <= 0 even though frames are readable,
+        # so attempt an actual read to confirm the file is usable.
+        ret, frame = cap.read()
+        if not ret or frame is None:
+            info["reason"] = f"No readable frames found in file: {path}"
+            return info
+
+        info["ok"] = True
+        info["frame_count"] = frame_count
+        info["fps"] = fps
+        return info
+    finally:
+        cap.release()
 
 # ============== CINEMATIC GRADE PIPELINE ==============
 
@@ -259,10 +309,34 @@ def center_crop_and_resize(img, target_size):
 def extract_clips(video_files, clip_dur, num_clips, target_size, fps=30):
     if not video_files:
         return []
+
+    # Validate every candidate file up front so we can fail fast with a
+    # specific error instead of silently returning an empty clip list.
+    valid_files = []
+    for path in video_files:
+        if not path or not os.path.exists(path):
+            logger.error(f"extract_clips: file does not exist: {path}")
+            continue
+        info = validate_video_file(path)
+        if not info["ok"]:
+            logger.error(f"extract_clips: rejecting unreadable file '{path}': {info['reason']}")
+            continue
+        valid_files.append(path)
+
+    if not valid_files:
+        raise VideoReadError(
+            "Uploaded video format not supported or corrupted. "
+            "Video file could not be read (check format: mp4, avi, mov, webm)."
+        )
+
     clips = []
     for _ in range(num_clips):
-        path = random.choice(video_files)
+        path = random.choice(valid_files)
         cap = cv2.VideoCapture(path)
+        if not cap.isOpened():
+            logger.error(f"extract_clips: cv2.VideoCapture failed to open '{path}' after passing validation")
+            cap.release()
+            continue
         total = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
         vfps = cap.get(cv2.CAP_PROP_FPS) or fps
         needed = int(clip_dur * vfps)
@@ -364,7 +438,7 @@ def generate_edit(user_files, edit_style, base_dir, output_path, target_size=(72
             # Fallback if extraction failed
             user_clips = extract_clips(user_files, 1.5, 4, target_size, fps)
         if not user_clips:
-            raise ValueError("Could not extract video clips from uploaded file.")
+            raise VideoReadError("No valid frames extracted from video.")
             
         merged = []
         for i in range(len(user_clips)):
@@ -398,7 +472,7 @@ def generate_edit(user_files, edit_style, base_dir, output_path, target_size=(72
             fast_cuts = extract_clips(user_files, 0.5, 4, target_size, fps)
 
         if not intro or not fast_cuts:
-            raise ValueError("Could not extract video clips for Second edit.")
+            raise VideoReadError("No valid frames extracted from video.")
             
         merged = intro + fast_cuts
         
@@ -418,7 +492,18 @@ def generate_edit(user_files, edit_style, base_dir, output_path, target_size=(72
     else: # "third" (Phonk Zoom)
         frames = []
         for f in user_files:
+            if not f or not os.path.exists(f):
+                logger.error(f"generate_edit (third): file does not exist: {f}")
+                continue
+            info = validate_video_file(f)
+            if not info["ok"]:
+                logger.error(f"generate_edit (third): rejecting unreadable file '{f}': {info['reason']}")
+                continue
             cap = cv2.VideoCapture(f)
+            if not cap.isOpened():
+                logger.error(f"generate_edit (third): cv2.VideoCapture failed to open '{f}' after passing validation")
+                cap.release()
+                continue
             while cap.isOpened():
                 ret, frame = cap.read()
                 if not ret or len(frames) >= 300:
@@ -427,7 +512,13 @@ def generate_edit(user_files, edit_style, base_dir, output_path, target_size=(72
             cap.release()
             if len(frames) >= 300:
                 break
-                
+
+        if not frames:
+            raise VideoReadError(
+                "Uploaded video format not supported or corrupted. "
+                "Video file could not be read (check format: mp4, avi, mov, webm)."
+            )
+
         if len(frames) < 60:
             raise ValueError("Uploaded video is too short for Phonk Zoom edit.")
 
